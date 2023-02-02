@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 
 
-def evaluate(_hyp, _ans):
+def evaluate(_hyp:str, _ans:str)->np.ndarray:
     _tiles = np.zeros(5, dtype=int)
     _ans = list(_ans)
     for i in range(5):
@@ -14,7 +14,7 @@ def evaluate(_hyp, _ans):
             _tiles[i] = 1
     return _tiles
 
-def comb_index(_hyp, _ans):
+def comb_index(_hyp:str, _ans:str)->int:
     _ans = list(_ans)
     index = 0
     if _hyp[0] == _ans[0]:
@@ -43,35 +43,40 @@ def comb_index(_hyp, _ans):
         index += 1 * (3 ** 4)
     return index
 
+def calc_proba(words:np.ndarray, _hyp:str)->np.ndarray:
+    probas = np.zeros(3 ** 5, dtype=np.float64)
+    for _ans in words:
+        combs = comb_index(_hyp, _ans)
+        probas[combs] += 1
+    return probas / len(words)
 
-def entropies():
+def entropies()->np.ndarray:
     entropies_calc = np.zeros(len(all_words), dtype=np.float64)
     for i, _hyp in tqdm(enumerate(all_words),total=len(all_words)):
-        combs = [comb_index(_hyp, _ans) for _ans in hidden_words]
-        proba = np.bincount(combs, minlength=3 ** 5) / len(hidden_words)
+        proba = calc_proba(hidden_words, _hyp)
         entropies_calc[i] = -np.sum(proba * np.log2(proba, out=np.zeros_like(proba), where=(proba != 0)))
     return entropies_calc
 
 
-def guess():
+def guess()->str: 
     return all_words[np.argmax(entropies())]
 
 
-def update(_hyp, _tiles):
+def update(_hyp, _tiles)->None:
     global all_words, hidden_words
     candidates = [cand for cand in all_words if all(_tiles == evaluate(_hyp, cand))]
     all_words = np.intersect1d(all_words, candidates)
     hidden_words = np.intersect1d(hidden_words, candidates)
 
 
-def init():
+def init()->None:
     global all_words, hidden_words
     all_words = np.loadtxt("data/english-all.txt", dtype=str)
     hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
 
 
 if __name__ == "__main__":
-    # execution time of 56s
+    # execution time of 43s
     init()
     ans = np.random.choice(hidden_words)
 
@@ -79,13 +84,10 @@ if __name__ == "__main__":
         print(f'Round {cnt + 1}:')
         hyp = guess() #if cnt != 0 else 'soare'
         print(f'Guess: {hyp} evaluated as {evaluate(hyp, ans)}')
-
         if all(evaluate(hyp, ans) == 2):
             print('Correct!')
             break
-
         if cnt == 5:
             print(f'The answer was {ans}.', "Failure", sep='\n')
             break
-
         update(hyp, evaluate(hyp, ans))
