@@ -72,9 +72,7 @@ def update(_hyp, _tiles):
 def init():
     global all_words, hidden_words
     all_words = np.loadtxt("data/english-all.txt", dtype=str)
-    all_words = [word.encode() for word in all_words]
     hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
-    hidden_words = [word.encode() for word in hidden_words]
 
 
 if __name__ == "__main__":
@@ -85,14 +83,14 @@ if __name__ == "__main__":
     for cnt in range(6):
         print(f'Round {cnt + 1}:')
         hyp = guess()  # if cnt != 0 else 'soare'
-        print(f'Guess: {hyp.decode()} evaluated as {evaluate(hyp, ans)}')
+        print(f'Guess: {hyp} evaluated as {evaluate(hyp, ans)}')
 
         if all(evaluate(hyp, ans) == 2):
             print('Correct!')
             break
 
         if cnt == 5:
-            print(f'The answer was {ans.decode()}.', "Failure", sep='\n')
+            print(f'The answer was {ans}.', "Failure", sep='\n')
             break
 
         update(hyp, evaluate(hyp, ans))
