@@ -43,7 +43,7 @@ def comb_index(_hyp, _ans):
     return index
 
 
-def calc_proba(words, _hyp):
+def calc_entropy(words, _hyp):
     probas = np.zeros(3 ** 5, dtype=np.float64)
     for _ans in words:
         comb = comb_index(_hyp, _ans)
@@ -54,7 +54,7 @@ def calc_proba(words, _hyp):
 
 def entropies():
     return joblib.Parallel(n_jobs=-1, backend='loky', verbose=0)(
-        joblib.delayed(calc_proba)(hidden_words, _hyp) for _hyp in all_words
+        joblib.delayed(calc_entropy)(hidden_words, _hyp) for _hyp in all_words
     )
 
 
@@ -78,8 +78,7 @@ def init():
 
 
 if __name__ == "__main__":
-    # execution time of 31s with calc_proba
-    # execution time of 8s with the calc_proba_python that calls compiled c code
+    # execution time of 11s with calc_proba
     init()
     ans = np.random.choice(hidden_words)
 
