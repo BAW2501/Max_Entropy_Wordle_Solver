@@ -1,7 +1,5 @@
 import numpy as np
-from tqdm import tqdm
-import ctypes
-
+import joblib
 
 def evaluate(_hyp, _ans):
     _tiles = np.zeros(5, dtype=int)
@@ -50,31 +48,14 @@ def calc_proba(words, _hyp):
     for _ans in words:
         comb = comb_index(_hyp, _ans)
         probas[comb] += 1
-    return probas / len(words)
-
-
-def calc_proba_python(words, _hyp):
-    words_count = len(words)
-    probas = np.zeros(3 ** 5, dtype=np.float64)
-    words_ptr = (ctypes.c_char_p * words_count)()
-    words_ptr[:] = words  # [word.encode() for word in words]
-    probas_ptr = probas.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
-
-    lib = ctypes.cdll.LoadLibrary('./fast_comb_proba.dll')
-    lib.calc_proba(words_ptr, words_count, _hyp, probas_ptr)
-
-    return probas
+    probas = probas / len(words)
+    return -np.sum(probas* np.log2(probas, out=np.zeros_like(probas), where=(probas != 0)))
 
 
 def entropies():
-    entropies_calc = np.zeros(len(all_words), dtype=np.float64)
-    for i, _hyp in tqdm(enumerate(all_words), total=len(all_words)):
-        try:
-            proba = calc_proba_python(hidden_words, _hyp)
-        except Exception as e:
-            proba = calc_proba(hidden_words, _hyp)
-        entropies_calc[i] = -np.sum(proba * np.log2(proba,out=np.zeros_like(proba), where=(proba != 0)))
-    return entropies_calc
+    return joblib.Parallel(n_jobs=-1, backend='loky', verbose=0)(
+        joblib.delayed(calc_proba)(hidden_words, _hyp) for _hyp in all_words
+    )
 
 
 def guess():

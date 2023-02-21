@@ -21,20 +21,27 @@ The solver is implemented in Solver.py , can be modified to for use online or us
 ## References
 [1] C. E. Shannon, “A Mathematical Theory of Communication,” Bell Syst. Tech. J., vol. 27, no.
 3, pp. 379–423, 1948, doi: 10.1002/j.1538-7305.1948.tb01338.x.
+
 [2] O. Maroney, “Information Processing and Thermodynamic Entropy,” in The Stanford 
 Encyclopedia of Philosophy, Fall 2009., E. N. Zalta, Ed. Metaphysics Research Lab, Stanford 
 University, 2009. Accessed: Apr. 12, 2022. [Online]. Available: 
 https://plato.stanford.edu/archives/fall2009/entries/information-entropy/
+
 [3] R. V. L. Hartley, “Transmission of Information1,” Bell Syst. Tech. J., vol. 7, no. 3, pp. 535–
 563, 1928, doi: 10.1002/j.1538-7305.1928.tb01236.x.
+
 [4] K. M and M. P, “Information Theory in Game Theory,” Entropy Basel Switz., vol. 20, no. 11, 
 Oct. 2018, doi: 10.3390/e20110817.
+
 [5] D. Lokshtanov and B. Subercaseaux, “Wordle is NP-hard,” ArXiv220316713 Cs, Mar. 2022, 
 Accessed: Apr. 12, 2022. [Online]. Available: http://arxiv.org/abs/2203.16713
+
 [6] B. J. Anderson and J. G. Meyer, “Finding the optimal human strategy for Wordle using 
 maximum correct letter probabilities and reinforcement learning,” ArXiv220200557 Cs, Feb. 2022, 
 Accessed: Apr. 12, 2022. [Online]. Available: http://arxiv.org/abs/2202.00557
+
 [7] “Wordle - A daily word game.” https://www.nytimes.com/games/wordle (accessed Apr. 12, 
 2022).
+
 [8] A. Ratnaparkhi, “Maximum entropy models for natural language ambiguity resolution,” phd, 
 University of Pennsylvania, USA, 1998.
