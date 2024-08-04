@@ -1,5 +1,7 @@
+import time
 import numpy as np
-import joblib
+from joblib import Parallel, delayed
+
 
 def evaluate(_hyp, _ans):
     _tiles = np.zeros(5, dtype=int)
@@ -16,30 +18,12 @@ def evaluate(_hyp, _ans):
 def comb_index(_hyp, _ans):
     _ans = list(_ans)
     index = 0
-    if _hyp[0] == _ans[0]:
-        index += 2 * (3 ** 0)
-        _ans[0] = '0'
-    elif _hyp[0] in _ans:
-        index += 1 * (3 ** 0)
-    if _hyp[1] == _ans[1]:
-        index += 2 * (3 ** 1)
-        _ans[1] = '0'
-    elif _hyp[1] in _ans:
-        index += 1 * (3 ** 1)
-    if _hyp[2] == _ans[2]:
-        index += 2 * (3 ** 2)
-        _ans[2] = '0'
-    elif _hyp[2] in _ans:
-        index += 1 * (3 ** 2)
-    if _hyp[3] == _ans[3]:
-        index += 2 * (3 ** 3)
-        _ans[3] = '0'
-    elif _hyp[3] in _ans:
-        index += 1 * (3 ** 3)
-    if _hyp[4] == _ans[4]:
-        index += 2 * (3 ** 4)
-    elif _hyp[4] in _ans:
-        index += 1 * (3 ** 4)
+    for i in range(5):
+        if _hyp[i] == _ans[i]:
+            index += 2 * (3 ** i)
+            _ans[i] = '0'
+        elif _hyp[i] in _ans:
+            index += 1 * (3 ** i)
     return index
 
 
@@ -53,9 +37,8 @@ def calc_entropy(words, _hyp):
 
 
 def entropies():
-    return joblib.Parallel(n_jobs=-1, backend='loky', verbose=0)(
-        joblib.delayed(calc_entropy)(hidden_words, _hyp) for _hyp in all_words
-    )
+    return np.array(Parallel(n_jobs=-1,verbose=0)(delayed(calc_entropy)(hidden_words, _hyp) for _hyp in all_words
+    ))
 
 
 def guess():
@@ -79,7 +62,7 @@ if __name__ == "__main__":
     # execution time of 11s with calc_proba
     init()
     ans = np.random.choice(hidden_words)
-
+    start = time.time()
     for cnt in range(6):
         print(f'Round {cnt + 1}:')
         hyp = guess()  # if cnt != 0 else 'soare'
@@ -94,3 +77,5 @@ if __name__ == "__main__":
             break
 
         update(hyp, evaluate(hyp, ans))
+
+    print(f'Execution time: {time.time() - start:.2f}s')

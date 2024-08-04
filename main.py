@@ -2,7 +2,7 @@ import numpy as np
 import pygame
 import random
 import sys
-from Solver import *
+from Solver import evaluate, guess, update, init
 
 pygame.init()
 pygame.display.set_caption("Wordle Clone")
