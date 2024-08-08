@@ -1,81 +1,63 @@
-import time
+#import time
 import numpy as np
 from joblib import Parallel, delayed
 
+class WordleSolver:
+    def __init__(self):
+        self.all_words = np.loadtxt("data/english-all.txt", dtype=str)
+        self.hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
 
-def evaluate(_hyp, _ans):
-    _tiles = np.zeros(5, dtype=int)
-    _ans = list(_ans)
-    for i in range(5):
-        if _hyp[i] == _ans[i]:
-            _tiles[i] = 2
-            _ans[i] = '0'
-        elif _hyp[i] in _ans:
-            _tiles[i] = 1
-    return _tiles
+    def evaluate(self, hyp: str, ans: str) -> str:
+        return np.base_repr(self.comb_index(hyp, ans), 3).rjust(5, '0')
 
+    def comb_index(self, hyp: str, ans: str) -> int: # inline for efficiency
+        ans_list = list(ans)
+        index = 0
+        for i in range(5):
+            if hyp[i] == ans_list[i]:
+                index += 2 * (3 ** i)
+                ans_list[i] = "0"
+            elif hyp[i] in ans_list:
+                index += 1 * (3 ** i)
+        return index
 
-def comb_index(_hyp, _ans):
-    _ans = list(_ans)
-    index = 0
-    for i in range(5):
-        if _hyp[i] == _ans[i]:
-            index += 2 * (3 ** i)
-            _ans[i] = '0'
-        elif _hyp[i] in _ans:
-            index += 1 * (3 ** i)
-    return index
+    def calc_entropy(self, hyp: str) -> np.float32:
+        combs = np.fromiter((self.comb_index(hyp, ans) for ans in self.hidden_words), np.uint8, len(self.hidden_words))
+        probas = np.bincount(combs) / len(self.hidden_words)
+        log_probas = np.log2(probas, where=0 < probas, out=0 * probas)
+        return -np.sum(probas * log_probas)
 
+    def entropies(self) -> np.ndarray:
+        return np.array(
+            Parallel(n_jobs=-1, verbose=0)(
+                delayed(self.calc_entropy)(_hyp) for _hyp in self.all_words
+            )
+        )
 
-def calc_entropy(words, _hyp):
-    probas = np.zeros(3 ** 5, dtype=np.float64)
-    for _ans in words:
-        comb = comb_index(_hyp, _ans)
-        probas[comb] += 1
-    probas = probas / len(words)
-    return -np.sum(probas* np.log2(probas, out=np.zeros_like(probas), where=(probas != 0)))
+    def guess(self) -> str:
+        return self.all_words[np.argmax(self.entropies())]
 
-
-def entropies():
-    return np.array(Parallel(n_jobs=-1,verbose=0)(delayed(calc_entropy)(hidden_words, _hyp) for _hyp in all_words
-    ))
-
-
-def guess():
-    return all_words[np.argmax(entropies())]
-
-
-def update(_hyp, _tiles):
-    global all_words, hidden_words
-    candidates = [cand for cand in all_words if all(_tiles == evaluate(_hyp, cand))]
-    all_words = np.intersect1d(all_words, candidates)
-    hidden_words = np.intersect1d(hidden_words, candidates)
-
-
-def init():
-    global all_words, hidden_words
-    all_words = np.loadtxt("data/english-all.txt", dtype=str)
-    hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
-
+    def update(self, hyp: str, tiles: str) -> None:
+        candidates = [cand for cand in self.all_words if tiles == self.evaluate(hyp, cand)]
+        self.all_words = np.intersect1d(self.all_words, candidates)
+        self.hidden_words = np.intersect1d(self.hidden_words, candidates)
 
 if __name__ == "__main__":
-    # execution time of 11s with calc_proba
-    init()
-    ans = np.random.choice(hidden_words)
-    start = time.time()
+    solver = WordleSolver()
+    answer = np.random.choice(solver.hidden_words)
+    
+    #start = time.time()
     for cnt in range(6):
-        print(f'Round {cnt + 1}:')
-        hyp = guess()  # if cnt != 0 else 'soare'
-        print(f'Guess: {hyp} evaluated as {evaluate(hyp, ans)}')
-
-        if all(evaluate(hyp, ans) == 2):
-            print('Correct!')
+        print(f"Round {cnt + 1}:")
+        guess = solver.guess()
+        tiles = solver.evaluate(guess, answer)
+        print(f"Guess: {guess} evaluated as {tiles}")
+        if str(answer) == str(guess):
+            print("Correct!")
             break
-
         if cnt == 5:
-            print(f'The answer was {ans}.', "Failure", sep='\n')
+            print(f"The answer was {answer}.", "Failure", sep="\n")
             break
+        solver.update(guess, tiles)
 
-        update(hyp, evaluate(hyp, ans))
-
-    print(f'Execution time: {time.time() - start:.2f}s')
+    #print(f"Execution time: {time.time() - start:.2f}s")
