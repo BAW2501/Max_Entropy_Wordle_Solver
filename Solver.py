@@ -1,4 +1,4 @@
-#import time
+import time
 import numpy as np
 from joblib import Parallel, delayed
 
@@ -6,20 +6,22 @@ class WordleSolver:
     def __init__(self):
         self.all_words = np.loadtxt("data/english-all.txt", dtype=str)
         self.hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
+    @staticmethod
+    def evaluate( hyp: str, ans: str) -> str:
+        return np.base_repr(WordleSolver.comb_index(hyp, ans), 3).rjust(5, '0')
 
-    def evaluate(self, hyp: str, ans: str) -> str:
-        return np.base_repr(self.comb_index(hyp, ans), 3).rjust(5, '0')
-
-    def comb_index(self, hyp: str, ans: str) -> int: # inline for efficiency
+    @staticmethod
+    def comb_index(hyp: str, ans: str) -> int: # inline for efficiency
         ans_list = list(ans)
         index = 0
         for i in range(5):
             if hyp[i] == ans_list[i]:
-                index += 2 * (3 ** i)
+                index += 2 * (3 ** (4 - i))
                 ans_list[i] = "0"
             elif hyp[i] in ans_list:
-                index += 1 * (3 ** i)
+                index += 1 * (3 ** (4 - i))
         return index
+   
 
     def calc_entropy(self, hyp: str) -> np.float32:
         combs = np.fromiter((self.comb_index(hyp, ans) for ans in self.hidden_words), np.uint8, len(self.hidden_words))
@@ -44,9 +46,9 @@ class WordleSolver:
 
 if __name__ == "__main__":
     solver = WordleSolver()
-    answer = np.random.choice(solver.hidden_words)
+    answer = 'vomit' #np.random.choice(solver.hidden_words)
     
-    #start = time.time()
+    start = time.time()
     for cnt in range(6):
         print(f"Round {cnt + 1}:")
         guess = solver.guess()
@@ -60,4 +62,4 @@ if __name__ == "__main__":
             break
         solver.update(guess, tiles)
 
-    #print(f"Execution time: {time.time() - start:.2f}s")
+    print(f"Execution time: {time.time() - start:.2f}s")
