@@ -8,230 +8,150 @@ pygame.init()
 pygame.display.set_caption("Wordle Clone")
 WIDTH, HEIGHT = 800, 600
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+CLOCK = pygame.time.Clock()
 FPS = 30
 
-GREY = (100, 100, 100)
-DARK_GREY = (20, 20, 20)
-WHITE = (255, 255, 255)
-RED = (255, 108, 108)
-COLOR_INCORRECT = (50, 50, 50)
-COLOR_MISPLACED = (255, 193, 53)
-COLOR_CORRECT = (0, 185, 6)
+# Colors
+GREY, DARK_GREY, WHITE, RED = (100, 100, 100), (20, 20, 20), (255, 255, 255), (255, 108, 108)
+COLOR_INCORRECT, COLOR_MISPLACED, COLOR_CORRECT = (50, 50, 50), (255, 193, 53), (0, 185, 6)
 
-TEXT_TIMER = 2
-NUM_ROWS = 6
-NUM_COLS = 5
-LETTER_LENGTH = NUM_COLS
-RECT_WIDTH = 50
-RECT_HEIGHT = 50
-# Pixels between each Rect
-DX = 10
-DY = 10
-X_PADDING = 5
-Y_PADDING = 5
-# Leftmost topmost coordinate where the first rect will be drawn, should be symmetrical. Accounts for number of
-# rects, pixels between rects and rect sizes.
-BASE_OFFSET_X = (WIDTH / 2) - ((NUM_COLS / 2) * DX) - ((NUM_COLS / 2) * RECT_WIDTH) + (((NUM_COLS + 1) % 2) * (DX / 2))
-BASE_OFFSET_Y = (HEIGHT / 2) - ((NUM_ROWS / 2) * DY) - ((NUM_ROWS / 2) * RECT_HEIGHT) + (
-        ((NUM_ROWS + 1) % 2) * (DY / 2))
+# Game settings
+NUM_ROWS, NUM_COLS = 6, 5
+RECT_WIDTH, RECT_HEIGHT = 50, 50
+DX, DY = 10, 10
+X_PADDING, Y_PADDING = 5, 5
 
+# Calculate base offsets
+BASE_OFFSET_X = (WIDTH - (NUM_COLS * (RECT_WIDTH + DX) - DX)) // 2
+BASE_OFFSET_Y = (HEIGHT - (NUM_ROWS * (RECT_HEIGHT + DY) - DY)) // 2
 
-def main():  # sourcery no-metrics
-    clock = pygame.time.Clock()
-    letter_font = pygame.font.Font(None, 65)
-    text = pygame.font.Font(None, 40)
-    used_words = []
-    curr_word = ""
-    word_count = 0
-    curr_letter = 0
+def draw_grid():
     rects = []
-    flag_win = False
-    flag_lose = False
-    flag_invalid_word = False
-    flag_not_enough_letters = False
-    timer_flag_1 = 0
-    timer_flag_2 = 0
+    for y in range(NUM_ROWS):
+        row = []
+        for x in range(NUM_COLS):
+            x_pos = BASE_OFFSET_X + x * (RECT_WIDTH + DX)
+            y_pos = BASE_OFFSET_Y + y * (RECT_HEIGHT + DY)
+            pygame.draw.rect(SCREEN, GREY, (x_pos, y_pos, RECT_WIDTH, RECT_HEIGHT), 2)
+            row.append((x_pos, y_pos))
+        rects.append(row)
+    return rects
+
+def draw_title():
+    font = pygame.font.Font(None, 65)
+    title_surface = font.render("WORDLE", True, WHITE)
+    SCREEN.blit(title_surface, (BASE_OFFSET_X + RECT_WIDTH, BASE_OFFSET_Y - (RECT_HEIGHT * 2)))
+    pygame.draw.line(SCREEN, WHITE, (BASE_OFFSET_X - RECT_WIDTH, BASE_OFFSET_Y - RECT_HEIGHT), 
+                     (BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS + 1)) + (DX * (NUM_COLS - 1)), BASE_OFFSET_Y - RECT_HEIGHT))
+
+def draw_text(text, color, y_offset):
+    font = pygame.font.Font(None, 40)
+    text_surface = font.render(text, True, color)
+    x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 5))
+    y_pos = BASE_OFFSET_Y + y_offset
+    SCREEN.blit(text_surface, (x_pos, y_pos))
+
+def main():
+    letter_font = pygame.font.Font(None, 65)
+    used_words, curr_word = [], ""
+    word_count, curr_letter = 0, 0
+    flag_win, flag_lose, flag_invalid_word, flag_not_enough_letters = False, False, False, False
+    timer_flag_1, timer_flag_2 = 0, 0
+
     wordlist = np.loadtxt("data/english-hidden.txt", dtype=str)
     allowedlist = np.loadtxt("data/english-all.txt", dtype=str)
     guess_word = random.choice(wordlist)
     print(f'The word to guess is {guess_word}')
+
     solver = WordleSolver()
     hyp = solver.guess() if len(used_words) else "soare"
-    print(f'Try : {hyp}')
+    #print(f'Try : {hyp}')
     solver.update(hyp, solver.evaluate(hyp, guess_word))
-    text_surface = text.render("Best Guess :" + hyp, True, WHITE)
-    x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 5))
-    y_pos = BASE_OFFSET_Y - (DY * 4)
-    SCREEN.blit(text_surface, (x_pos, y_pos))
-    assert (len(guess_word) == LETTER_LENGTH)
-    assert (guess_word.islower())
 
     while True:
+        SCREEN.fill(DARK_GREY)
+        rects = draw_grid()  # Draw the grid every frame
+        draw_title()
+        draw_text("Best Guess :" + hyp.upper(), WHITE, -(DY * 4))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
-            # Option to restart game
-            if flag_win or flag_lose:
-                if event.type == pygame.KEYDOWN:
+            if event.type == pygame.KEYDOWN:
+                if flag_win or flag_lose:
                     if event.key == pygame.K_r:
                         main()
-            else:
-                # Upon keypress
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_BACKSPACE:
-                        # Prevents IndexErrors
-                        if curr_word:
-                            curr_word = curr_word[:-1]
-                            curr_letter -= 1
-                    elif event.key == pygame.K_RETURN:
-                        solver.update(hyp, solver.evaluate(hyp, guess_word))
-                        hyp = solver.guess()
-                        print(f'Try : {hyp}')
-
-                        text_surface = text.render("Best Guess :" + hyp, True, WHITE)
-                        x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 5))
-                        y_pos = BASE_OFFSET_Y - (DY * 4)
-                        SCREEN.blit(text_surface, (x_pos, y_pos))
-                        if len(curr_word) == 5:
-                            if curr_word.lower() in allowedlist:
-                                word_count += 1
-                                used_words.append(curr_word)
-                                curr_word = ""
-                                curr_letter = 0
-                            else:
-                                flag_invalid_word = True
-                                timer_flag_1 = 0
+                elif event.key == pygame.K_BACKSPACE and curr_word:
+                    curr_word = curr_word[:-1]
+                    curr_letter -= 1
+                elif event.key == pygame.K_RETURN:
+                    solver.update(hyp, solver.evaluate(hyp, guess_word))
+                    hyp = solver.guess()
+                    #print(f'Try : {hyp}')
+                    if len(curr_word) == 5:
+                        if curr_word.lower() in allowedlist:
+                            used_words.append(curr_word)
+                            word_count += 1
+                            curr_word, curr_letter = "", 0
                         else:
-                            flag_not_enough_letters = True
-                            timer_flag_2 = 0
+                            flag_invalid_word, timer_flag_1 = True, 0
                     else:
-                        if len(curr_word) < LETTER_LENGTH:
-                            if event.unicode.isalpha():
-                                curr_word += event.unicode.upper()
-                                curr_letter += 1
+                        flag_not_enough_letters, timer_flag_2 = True, 0
+                elif len(curr_word) < NUM_COLS and event.unicode.isalpha():
+                    curr_word += event.unicode.upper()
+                    curr_letter += 1
 
-        SCREEN.fill(DARK_GREY)
-        # Draw title and underline
-        draw_title(letter_font)
-        # Draws base 5x6 grid for letters
-        for y in range(NUM_ROWS):
-            row_rects = []
-            for x in range(NUM_COLS):
-                x_pos = BASE_OFFSET_X + (x * DX) + (x * RECT_WIDTH)
-                y_pos = BASE_OFFSET_Y + (y * DY) + (y * RECT_HEIGHT)
-                curr_rect = pygame.Rect((x_pos, y_pos), (RECT_WIDTH, RECT_HEIGHT))
-                pygame.draw.rect(SCREEN, GREY, curr_rect, 2)
-                row_rects.append((x_pos, y_pos))
-            rects.append(row_rects)
-
-        # Alerts player that word is not in wordlist. Text appears for 2 seconds.
         if flag_invalid_word:
-            timer_flag_2 = 0
-            flag_not_enough_letters = False
-            text_surface = text.render("Not in word list", True, RED)
-            # Should be about center aligned. Use of magic numbers, but not serious.
-            x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 5))
-            y_pos = BASE_OFFSET_Y - (DY * 4)
-            SCREEN.blit(text_surface, (x_pos, y_pos))
+            draw_text("Not in word list", RED, -(DY * 4))
             timer_flag_1 += 1
         if flag_not_enough_letters:
-            timer_flag_1 = 0
-            flag_invalid_word = False
-            text_surface = text.render("Not enough letters", True, RED)
-            x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 10))
-            y_pos = BASE_OFFSET_Y - (DY * 4)
-            SCREEN.blit(text_surface, (x_pos, y_pos))
+            draw_text("Not enough letters", RED, -(DY * 4))
             timer_flag_2 += 1
-        if timer_flag_1 == TEXT_TIMER * FPS:
-            flag_invalid_word = False
-            timer_flag_1 = 0
-        if timer_flag_2 == TEXT_TIMER * FPS:
-            flag_not_enough_letters = False
-            timer_flag_2 = 0
+        if timer_flag_1 == 2 * FPS:
+            flag_invalid_word, timer_flag_1 = False, 0
+        if timer_flag_2 == 2 * FPS:
+            flag_not_enough_letters, timer_flag_2 = False, 0
 
         if flag_win:
-            text_surface = text.render("Correct! Press 'R' to play again", True, WHITE)
-            x_pos = BASE_OFFSET_X - (RECT_WIDTH * (NUM_COLS / 5))
-            y_pos = BASE_OFFSET_Y + (DY * 7) + (RECT_HEIGHT * NUM_ROWS)
-            SCREEN.blit(text_surface, (x_pos, y_pos))
+            draw_text("Correct! Press 'R' to play again", WHITE, (DY * 7) + (RECT_HEIGHT * NUM_ROWS))
         if flag_lose:
-            text_surface = text.render("Try again! Press 'R' to play again", True, WHITE)
-            x_pos = BASE_OFFSET_X - (RECT_WIDTH * (NUM_COLS / 5))
-            y_pos = BASE_OFFSET_Y + (DY * 7) + (RECT_HEIGHT * NUM_ROWS)
-            SCREEN.blit(text_surface, (x_pos, y_pos))
+            draw_text("Try again! Press 'R' to play again", WHITE, (DY * 7) + (RECT_HEIGHT * NUM_ROWS))
 
-        # Blitz each letter of the current word the user is currently typing.
-        # Firstly renders each letter, then blitz it on the appropriate rectangle according to which letter it is.
-        if curr_word:
-            for letter_index in range(len(curr_word)):
-                word_surface = letter_font.render(curr_word[letter_index], True, WHITE)
-                # [0] represents X coord, [1] Y.
-                SCREEN.blit(word_surface, (
-                    rects[word_count][letter_index][0] + X_PADDING, rects[word_count][letter_index][1] + Y_PADDING))
+        for i, letter in enumerate(curr_word):
+            word_surface = letter_font.render(letter, True, WHITE)
+            SCREEN.blit(word_surface, (rects[word_count][i][0] + X_PADDING, rects[word_count][i][1] + Y_PADDING))
 
-        # Render letters and rects of words already inputted by player.
-        if used_words:
-            for word_index in range(len(used_words)):
-                remaining_letters = list(guess_word)
-                num_correct = 0
+        for word_index, word in enumerate(used_words):
+            remaining_letters = list(guess_word)
+            num_correct = 0
+            same_indices = [i for i, (x, y) in enumerate(zip(guess_word, word.lower())) if x == y]
+            
+            for index in same_indices:
+                num_correct += 1
+                remaining_letters[index] = ""
+                pygame.draw.rect(SCREEN, COLOR_CORRECT, (*rects[word_index][index], RECT_WIDTH, RECT_HEIGHT))
+                letter_surface = letter_font.render(word[index], True, WHITE)
+                SCREEN.blit(letter_surface, (rects[word_index][index][0] + X_PADDING, rects[word_index][index][1] + Y_PADDING))
 
-                # Used to make sure that letters that appear more than once don't get counted if that letter appears
-                # in guess_word only once. EG: guess_word = "proxy", word = "droop", and 'o' appears more than once.
-                # The second 'o' in droop does not get counted.
-                same_indices = [i for i, x in enumerate(zip(guess_word, used_words[word_index].lower())) if
-                                all(y == x[0] for y in x)]
-                # Same indices - if guess word is "beast" and used word[word_index] is "toast", same indices contains
-                # the indices where same letters in the same positions collide, in this case, "a","s","t" - which
-                # have indices of [2,3,4] respectively.
-                if same_indices:
-                    for index in range(len(same_indices)):
-                        num_correct += 1
-                        remaining_letters[same_indices[index]] = ""
-                        curr_rect = pygame.Rect(
-                            (rects[word_index][same_indices[index]][0], rects[word_index][same_indices[index]][1]),
-                            (RECT_WIDTH, RECT_HEIGHT))
-                        pygame.draw.rect(SCREEN, COLOR_CORRECT, curr_rect)
-                        past_letter_surface = letter_font.render(used_words[word_index][same_indices[index]].upper(),
-                                                                 True, WHITE)
-                        SCREEN.blit(past_letter_surface, (rects[word_index][same_indices[index]][0] + X_PADDING,
-                                                          rects[word_index][same_indices[index]][1] + Y_PADDING))
+            for letter_index, letter in enumerate(word):
+                if letter_index not in same_indices:
+                    rect = (*rects[word_index][letter_index], RECT_WIDTH, RECT_HEIGHT)
+                    letter_lower = letter.lower()
+                    color = COLOR_INCORRECT if letter_lower not in remaining_letters else COLOR_MISPLACED
+                    pygame.draw.rect(SCREEN, color, rect)
+                    if color == COLOR_MISPLACED:
+                        remaining_letters[remaining_letters.index(letter_lower)] = ""
+                    letter_surface = letter_font.render(letter, True, WHITE)
+                    SCREEN.blit(letter_surface, (rects[word_index][letter_index][0] + X_PADDING, rects[word_index][letter_index][1] + Y_PADDING))
 
-                for letter_index in range(LETTER_LENGTH):
-                    if letter_index not in same_indices:
-                        curr_rect = pygame.Rect(
-                            (rects[word_index][letter_index][0], rects[word_index][letter_index][1]),
-                            (RECT_WIDTH, RECT_HEIGHT))
-                        cur_past_letter = used_words[word_index][letter_index].lower()
-                        past_letter_surface = letter_font.render(cur_past_letter.upper(), True, WHITE)
-                        # Incorrect Letters
-                        if cur_past_letter not in remaining_letters:
-                            pygame.draw.rect(SCREEN, COLOR_INCORRECT, curr_rect)
-                        # Letter exists in word, but wrong position.
-                        else:
-                            pygame.draw.rect(SCREEN, COLOR_MISPLACED, curr_rect)
-                            remaining_letters[remaining_letters.index(cur_past_letter)] = ""
-                        SCREEN.blit(past_letter_surface, (
-                            rects[word_index][letter_index][0] + X_PADDING,
-                            rects[word_index][letter_index][1] + Y_PADDING))
-
-                # Win/lose condition
-                if num_correct == 5:
-                    flag_win = True
-                elif len(used_words) == NUM_ROWS:
-                    flag_lose = True
+            if num_correct == 5:
+                flag_win = True
+            elif len(used_words) == NUM_ROWS:
+                flag_lose = True
 
         pygame.display.update()
-        clock.tick(FPS)
-
-
-def draw_title(font):
-    pygame.draw.line(SCREEN, WHITE, (BASE_OFFSET_X - RECT_WIDTH, BASE_OFFSET_Y - RECT_HEIGHT), (
-        BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS + 1)) + (DX * (NUM_COLS - 1)), BASE_OFFSET_Y - RECT_HEIGHT), width=1)
-    title_surface = font.render("WORDLE", True, WHITE)
-    SCREEN.blit(title_surface, (BASE_OFFSET_X + RECT_WIDTH, BASE_OFFSET_Y - (RECT_HEIGHT * 2)))
-
+        CLOCK.tick(FPS)
 
 if __name__ == "__main__":
     main()
