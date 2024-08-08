@@ -2,7 +2,7 @@ import numpy as np
 import pygame
 import random
 import sys
-from Solver import evaluate, guess, update, init
+from Solver import WordleSolver
 
 pygame.init()
 pygame.display.set_caption("Wordle Clone")
@@ -55,10 +55,10 @@ def main():  # sourcery no-metrics
     allowedlist = np.loadtxt("data/english-all.txt", dtype=str)
     guess_word = random.choice(wordlist)
     print(f'The word to guess is {guess_word}')
-    init()
-    hyp = guess() if len(used_words) else "soare"
+    solver = WordleSolver()
+    hyp = solver.guess() if len(used_words) else "soare"
     print(f'Try : {hyp}')
-    update(hyp, evaluate(hyp, guess_word))
+    solver.update(hyp, solver.evaluate(hyp, guess_word))
     text_surface = text.render("Best Guess :" + hyp, True, WHITE)
     x_pos = BASE_OFFSET_X + (RECT_WIDTH * (NUM_COLS / 5))
     y_pos = BASE_OFFSET_Y - (DY * 4)
@@ -86,8 +86,8 @@ def main():  # sourcery no-metrics
                             curr_word = curr_word[:-1]
                             curr_letter -= 1
                     elif event.key == pygame.K_RETURN:
-                        update(hyp, evaluate(hyp, guess_word))
-                        hyp = guess()
+                        solver.update(hyp, solver.evaluate(hyp, guess_word))
+                        hyp = solver.guess()
                         print(f'Try : {hyp}')
 
                         text_surface = text.render("Best Guess :" + hyp, True, WHITE)
