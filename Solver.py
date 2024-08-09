@@ -3,6 +3,7 @@ import numpy as np
 from joblib import Parallel, delayed
 
 class WordleSolver:
+    __slots__ = ("all_words", "hidden_words")
     def __init__(self):
         self.all_words = np.loadtxt("data/english-all.txt", dtype=str)
         self.hidden_words = np.loadtxt("data/english-hidden.txt", dtype=str)
@@ -46,7 +47,7 @@ class WordleSolver:
 
 if __name__ == "__main__":
     solver = WordleSolver()
-    answer = 'vomit' #np.random.choice(solver.hidden_words)
+    answer = np.random.choice(solver.hidden_words) #'vomit' #
     
     start = time.time()
     for cnt in range(6):
