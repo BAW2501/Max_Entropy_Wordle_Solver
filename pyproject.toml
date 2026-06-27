@@ -1,0 +1,14 @@
+[project]
+name = "max-entropy-wordle-solver"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "joblib>=1.5.3",
+    "numpy>=2.4.6",
+    "pygame>=2.6.1",
+]
+
+[tool.uv]
+exclude-newer = "30 days"
