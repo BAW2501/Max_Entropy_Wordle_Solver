@@ -1,6 +1,11 @@
 import time
+from typing import Optional
 import numpy as np
 from joblib import Parallel, delayed
+
+WORD_LEN = 5
+GREEN = 2
+YELLOW = 1
 
 class WordleSolver:
     __slots__ = ("all_words", "hidden_words")
@@ -12,21 +17,22 @@ class WordleSolver:
         return np.base_repr(WordleSolver.comb_index(hyp, ans), 3).rjust(5, '0')
 
     @staticmethod
-    def comb_index(hyp: str, ans: str) -> int: # inline for efficiency
-        ans_list = list(ans)
+    def comb_index(hyp: str, ans: str) -> int:
+        remaining: list[Optional[str]] = list(ans)
         index = 0
-        for i in range(5):
-            if hyp[i] == ans_list[i]:
-                index += 2 * (3 ** (4 - i))
-                ans_list[i] = "0"
-            elif hyp[i] in ans_list:
-                index += 1 * (3 ** (4 - i))
+        for i in range(WORD_LEN):                      # greens first
+            if hyp[i] == ans[i]:
+                index += GREEN * 3 ** (WORD_LEN - 1 - i)
+                remaining[i] = None
+        for i in range(WORD_LEN):                       # then yellows, on what's left
+            if hyp[i] != ans[i] and hyp[i] in remaining:
+                index += YELLOW * 3 ** (WORD_LEN - 1 - i)
+                remaining[remaining.index(hyp[i])] = None
         return index
-   
 
     def calc_entropy(self, hyp: str) -> np.float32:
         combs = np.fromiter((self.comb_index(hyp, ans) for ans in self.hidden_words), np.uint8, len(self.hidden_words))
-        probas = np.bincount(combs) / len(self.hidden_words)
+        probas = (np.bincount(combs) / len(self.hidden_words)).astype(np.float32)  
         log_probas = np.log2(probas, where=0 < probas, out=0 * probas)
         return -np.sum(probas * log_probas)
 
